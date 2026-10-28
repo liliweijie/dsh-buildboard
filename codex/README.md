@@ -7,6 +7,21 @@
 - Codex MCP 工具可打开便签板、读取/保存便签、查询额度、把选中便签及图片交给当前对话分析。
 - 窗口内的“分析”使用当前 Codex CLI 登录，支持指定项目目录，成功时结果直接显示在便签板；网络或 CLI 调用失败会明确提示，可改用当前聊天的分析工具。macOS 下自动沿用现有系统 HTTPS 代理，显式设置的代理环境变量优先。
 
+## 固定界面入口（1.1.0）
+
+已注册官方 MCP Apps 原生入口：
+
+- **侧栏应用**：在全局导航中点击“便签板 · Codex”，直接打开便签板。
+- **对话面板**：在对话的内容面板入口中选择“便签板 · Codex”，与聊天并排使用。
+
+这些操作由界面直接调用插件，不需要输入提示词，也不产生模型回合；刷新额度和保存便签不消耗模型额度。主动点击“开始分析”仍会调用 Codex 模型。入口的具体位置由客户端决定，不能指定任意顶栏位置。
+
+本地 MCP Apps 需要客户端支持并启用 `enable_mcp_apps`。可执行 `codex features enable enable_mcp_apps`；安装更新后**重启客户端一次**，让原生入口重新发现。自动化检查能验证资源与入口协议；实际侧栏入口仍需在支持该扩展的桌面客户端中确认。
+
+原生 UI 是自包含 MCP 资源，通过 MCP Apps 桥直接调用本插件，不嵌入本地网页、不依赖随机 localhost 端口、不向聊天发送操作消息。浏览器备用版仍可使用。
+
+[官方固定入口说明](https://developers.openai.com/plugins/build/extensions)。
+
 ## 安装
 
 要求 Node.js 22+、已登录 ChatGPT 账户的 Codex CLI，以及支持本地插件的 Codex 客户端。
@@ -18,7 +33,7 @@ codex plugin marketplace add .
 codex plugin add buildboard-codex@dsh-buildboard
 ```
 
-重启客户端或新开聊天以加载工具，然后说“打开 buildboard 便签板”。Agent 调用 `open_buildboard` 后，使用 `open_in_codex` 的 browser 目标打开返回的本地 URL。
+安装后重启客户端，在侧栏或对话面板入口中点击“便签板 · Codex”。无需先发消息。若客户端不支持 MCP Apps，可在聊天里说“打开 buildboard 便签板”，使用返回的本地 URL 作为浏览器备用入口。
 
 也可在本目录运行 `npm start`，手动在 Codex 浏览器打开打印的地址。无需 npm install，无第三方运行时依赖。服务只监听本机，端口随机，每次启动产生新的访问令牌。
 
@@ -37,7 +52,7 @@ codex plugin add buildboard-codex@dsh-buildboard
 
 ## 与原版的区别
 
-Codex 当前公开接口不能注册 DeepSeek 的 `conversation.session.header.utilities` 插槽。因此使用 **MCP 工具 + Codex 内打开的本地便签板窗口**，不会向 Codex 主程序顶部注入按钮。右上角额度属于便签板窗口，窄窗口也会固定在顶部。
+Codex 当前公开接口不能注册 DeepSeek 的 `conversation.session.header.utilities` 插槽。因此 1.1.0 通过官方 **侧栏应用 + 对话面板** 入口接入界面，同时保留本地浏览器备用版。不会向 Codex 主程序顶部注入按钮。右上角额度属于原生便签板，窄窗口也会固定在顶部。
 
 窗口内“分析”先显示说明，由用户点击“开始分析”才调用 `codex exec`，会消耗 Codex 账户额度。运行在只读模式，最长等待三分钟；可指定项目目录，不自动获取本聊天历史。需要当前对话背景时，让 Codex 使用 `prepare_note_analysis` 在当前聊天内分析。
 
@@ -63,6 +78,6 @@ Codex 当前公开接口不能注册 DeepSeek 的 `conversation.session.header.u
 npm test
 ```
 
-覆盖额度多桶/窗口选择、空值、非法值、存储并发、损坏恢复、MCP 握手与工具发现、HTTP 身份校验、便签读写和附件验证。界面手动验证保存、编辑、完成、图片压缩与刷新持久化、真实额度、窗口内的真实 Codex 分析，以及 381px 窄屏与 1024px 桌面布局。代码不包含凭证、用户便签或使用量快照。
+覆盖额度多桶/窗口选择、空值、非法值、存储并发、损坏恢复、MCP 握手与工具发现、侧栏/对话入口元数据、自包含资源、原生桥直连读写、HTTP 身份校验、便签读写和附件验证。界面手动验证保存、编辑、完成、图片压缩与刷新持久化、真实额度、窗口内的真实 Codex 分析，以及 381px 窄屏与 1024px 桌面布局。代码不包含凭证、用户便签或使用量快照。
 
 官方接口说明：[Codex App Server](https://learn.chatgpt.com/docs/app-server)、[插件打包](https://developers.openai.com/plugins/build/plugins)。

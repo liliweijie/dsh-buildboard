@@ -1,5 +1,13 @@
 {
-  "name": "@local/buildboard-codex", "version": "1.0.0", "private": true,
-  "type": "module", "engines": { "node": ">=22" },
-  "scripts": { "start": "node src/server.mjs --web", "test": "node --test test/*.test.mjs" }
+  "name": "@local/buildboard-codex",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.mjs --web",
+    "test": "node --test test/*.test.mjs"
+  }
 }

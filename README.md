@@ -1,6 +1,6 @@
 # buildboard
 
-> **Codex 版**：见 [`codex/`](codex/README.md)，支持 Codex 便签窗口，右上角显示当前 **5 小时额度剩余百分比**。原 DeepSeek Harness 版保持在仓库根目录。
+> **Codex 版**：见 [`codex/`](codex/README.md)，支持 **侧栏应用 / 对话面板固定入口**，无需先发送聊天消息；便签板右上角显示当前 **5 小时额度剩余百分比**。原 DeepSeek Harness 版保持在仓库根目录。
 
 DeepSeek Harness 的便签板插件：**随手记想法、贴图、看余额用量，还能一键把某条记录交给 AI 分析。**
 

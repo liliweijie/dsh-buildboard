@@ -8,6 +8,7 @@ import {createInterface} from 'node:readline';
 import {spawn} from 'node:child_process';
 import {Store} from './store.mjs';
 import {CodexClient} from './codex.mjs';
+import {UI_URI, UI_MIME, entrypointMetadata, uiResource} from './mcp-ui.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = process.env.BUILDBOARD_DATA_DIR || join(homedir(), '.codex', 'buildboard');
@@ -84,21 +85,38 @@ await mkdir(dataDir, {recursive: true, mode: 0o700});
 await new Promise(resolvePromise => server.listen(0, '127.0.0.1', resolvePromise));
 const url = `http://127.0.0.1:${server.address().port}/#${token}`;
 const tools = [
-  {name: 'open_buildboard', description: '打开 buildboard Codex 版便签板。将返回的本地 URL 用 open_in_codex 浏览器打开；右上角显示当前账户 5 小时剩余额度。', inputSchema: {type: 'object', properties: {}, additionalProperties: false}},
+  {name: 'buildboard_ui', title: '便签板面板操作', description: '供便签板界面直接读写数据与刷新额度，不调用模型、不发送聊天消息。', _meta: {ui: {visibility: ['app']}}, inputSchema: {type: 'object', properties: {action: {type: 'string', enum: ['notes', 'delete', 'analysis', 'usage']}, data: {type: 'object'}}, required: ['action'], additionalProperties: false}},
+  {name: 'open_buildboard', title: '便签板 · Codex', _meta: entrypointMetadata(), icons: [{src: 'data:image/svg+xml;base64,' + Buffer.from(await readFile(join(root, 'assets', 'icon.svg'))).toString('base64'), mimeType: 'image/svg+xml'}], description: '打开 Codex 原生便签板。也可从侧栏或对话面板入口直接点击打开，无需发送聊天消息。仅不支持 MCP Apps 的客户端需要用返回的 URL 打开浏览器备用版。', inputSchema: {type: 'object', properties: {}, additionalProperties: false}},
   {name: 'get_five_hour_usage', description: '读取 Codex 当前账户的 5 小时额度剩余百分比。不可用时不估算。', inputSchema: {type: 'object', properties: {}, additionalProperties: false}},
   {name: 'list_notes', description: '读取 Codex 版便签。', inputSchema: {type: 'object', properties: {}, additionalProperties: false}},
   {name: 'save_note', description: '新增或更新 Codex 版便签。', inputSchema: {type: 'object', properties: {id: {type: 'string'}, title: {type: 'string'}, text: {type: 'string'}, done: {type: 'boolean'}}, required: ['text'], additionalProperties: false}},
   {name: 'prepare_note_analysis', description: '读取指定便签供当前 Codex 对话分析，返回图片与分析提示，不自动发送消息。', inputSchema: {type: 'object', properties: {id: {type: 'string'}}, required: ['id'], additionalProperties: false}},
 ];
 async function dispatch(message) {
-  if (message.method === 'initialize') return {protocolVersion: '2024-11-05', capabilities: {tools: {}}, serverInfo: {name: 'buildboard-codex', version: '1.0.0'}};
+  if (message.method === 'initialize') return {protocolVersion: ['2024-11-05', '2025-03-26', '2025-06-18', '2025-11-25'].includes(message.params?.protocolVersion) ? message.params.protocolVersion : '2024-11-05', capabilities: {tools: {}, resources: {}}, serverInfo: {name: 'buildboard-codex', version: '1.1.0'}};
   if (message.method === 'ping') return {};
   if (message.method === 'tools/list') return {tools};
+  if (message.method === 'resources/list') return {resources: [{uri: UI_URI, name: 'buildboard-codex', title: '便签板 · Codex', mimeType: UI_MIME}]};
+  if (message.method === 'resources/read') {
+    if (message.params?.uri !== UI_URI) throw new Error('Unknown resource');
+    return {contents: [await uiResource(root)]};
+  }
   if (message.method === 'tools/call') {
     const {name, arguments: args = {}} = message.params;
     try {
       let result;
-      if (name === 'open_buildboard') result = {url, instructions: '使用 open_in_codex 打开此 URL。访问令牌仅用于本地窗口，不要公开分享 URL。'};
+      if (name === 'open_buildboard') return {content: [{type: 'text', text: JSON.stringify({url, instructions: '已打开原生便签板。仅不支持 MCP Apps 时使用此本地 URL 作为备用入口，不要公开分享。'})}], structuredContent: {title: '便签板 · Codex'}};
+      else if (name === 'buildboard_ui') {
+        const {action, data} = args;
+        if (action === 'notes') result = data === undefined ? {notes: await store.read()} : await store.save(data);
+        else if (action === 'usage') result = await usage();
+        else if (action === 'delete') result = await store.remove(data?.id);
+        else if (action === 'analysis') {
+          const note = (await store.read()).find(n => n.id === data?.id);
+          if (!note) throw new Error('便签不存在');
+          result = await analyze(note, data.workspace);
+        } else throw new Error('Unknown panel action');
+      }
       else if (name === 'get_five_hour_usage') result = await usage();
       else if (name === 'list_notes') result = {notes: await store.read()};
       else if (name === 'save_note') {
@@ -110,7 +128,7 @@ async function dispatch(message) {
         const note = (await store.read()).find(n => n.id === args.id); if (!note) throw new Error('便签不存在');
         return {content: [{type: 'text', text: promptFor(note)}, ...note.images.map(image => { const [, mime, data] = image.match(/^data:(image\/\w+);base64,(.*)$/); return {type: 'image', mimeType: mime, data}; })]};
       } else throw new Error('Unknown tool');
-      return {content: [{type: 'text', text: JSON.stringify(result)}]};
+      return {content: [{type: 'text', text: JSON.stringify(result)}], structuredContent: result};
     } catch (e) { return {isError: true, content: [{type: 'text', text: e.message}]}; }
   }
   throw new Error('Method not found');

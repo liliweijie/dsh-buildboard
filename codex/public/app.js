@@ -1,15 +1,31 @@
 const $ = id => document.getElementById(id);
-const token = location.hash.slice(1) || sessionStorage.getItem('buildboard-token');
-if (token) sessionStorage.setItem('buildboard-token', token);
-history.replaceState(null, '', location.pathname);
+const native = typeof buildboardNative !== 'undefined' ? buildboardNative : null;
+const token = native ? null : location.hash.slice(1) || sessionStorage.getItem('buildboard-token');
+if (!native) {
+  if (token) sessionStorage.setItem('buildboard-token', token);
+  history.replaceState(null, '', location.pathname);
+}
 let notes = [], images = [], editing = null, selected = null, saving = false, processing = false;
 const say = text => { $('message').textContent = text; };
 async function api(path, data) {
+  if (native) return native.call(path, data);
   const response = await fetch(`/api/${path}`, {method: data === undefined ? 'GET' : 'POST', headers: {'x-buildboard-token': token || '', 'Content-Type': 'application/json'}, ...(data === undefined ? {} : {body: JSON.stringify(data)})});
   const value = await response.json(); if (!response.ok) throw new Error(value.error || '请求失败'); return value;
 }
 function el(tag, text, className) { const node = document.createElement(tag); if (text !== undefined) node.textContent = text; if (className) node.className = className; return node; }
 function button(text, fn, label) { const node = el('button', text); node.type = 'button'; if (label) node.setAttribute('aria-label', label); node.onclick = () => Promise.resolve().then(fn).catch(e => say(e.message)); return node; }
+async function confirmDelete(note) {
+  // Native MCP iframes need an in-document dialog; browser confirm() may be disabled.
+  return new Promise(resolve => {
+    const dialog = el('dialog'); dialog.setAttribute('aria-label', '删除便签');
+    dialog.append(el('p', `删除“${note.title}”？`));
+    const actions = el('div', undefined, 'editor-actions');
+    const cancel = button('取消', () => dialog.close('cancel'));
+    actions.append(cancel, button('删除', () => dialog.close('delete'))); dialog.append(actions);
+    dialog.onclose = () => { const confirmed = dialog.returnValue === 'delete'; dialog.remove(); resolve(confirmed); };
+    document.body.append(dialog); dialog.showModal(); cancel.focus();
+  });
+}
 async function refreshNotes() { notes = (await api('notes')).notes; render(); }
 function render() {
   $('notes').replaceChildren(); $('note-count').textContent = notes.length;
@@ -29,7 +45,7 @@ function render() {
     actions.append(button(note.done ? '✓ 已完成' : '待办', async () => { await api('notes', {...note, done: !note.done}); await refreshNotes(); }));
     actions.append(button('编辑', () => edit(note)));
     actions.append(button('分析', () => { selected = note; $('analysis-result').textContent = ''; $('analysis-dialog').showModal(); }));
-    actions.append(button('删除', async () => { if (!confirm(`删除“${note.title}”？`)) return; await api('delete', {id: note.id}); if (editing === note.id) clear(); await refreshNotes(); }));
+    actions.append(button('删除', async () => { if (!await confirmDelete(note)) return; await api('delete', {id: note.id}); if (editing === note.id) clear(); await refreshNotes(); }));
     article.append(actions); $('notes').append(article);
   }
 }
