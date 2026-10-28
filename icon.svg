@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="buildboard">
+  <rect x="4" y="10" width="56" height="42" rx="5" fill="#3a3a3a" stroke="#6a6a6a" stroke-width="2"/>
+  <rect x="9" y="15" width="46" height="32" rx="2.5" fill="#232323"/>
+  <path d="M15 23h20M15 29h28M15 35h15" stroke="#d6d6d6" stroke-width="2.6" stroke-linecap="round"/>
+  <rect x="12" y="54" width="22" height="3.5" rx="1.75" fill="#8a8a8a"/>
+  <circle cx="50" cy="52" r="7" fill="#d6d6d6"/>
+  <path d="M50 48.5v4l2.6 1.6" stroke="#2a2a2a" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+</svg>
