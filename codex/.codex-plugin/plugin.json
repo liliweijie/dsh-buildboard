@@ -1,0 +1,6 @@
+{
+  "name": "buildboard-codex", "version": "1.0.0",
+  "description": "Codex 版便签板：本地便签、图片、分析和当前 5 小时额度剩余百分比。",
+  "mcpServers": "./.mcp.json",
+  "interface": { "displayName": "buildboard · Codex 版", "shortDescription": "便签与 5 小时剩余额度" }
+}

@@ -1,0 +1,11 @@
+# Handoff
+
+## Current Context
+
+2026-10-28：用户要求将 buildboard 改装成 Codex 可用版，仓库内标注 Codex 版，并在右上角显示当前 5 小时用量剩余度。
+
+实现位于 `codex/`；根目录 DeepSeek 版不变，根 README 添加入口，`.agents/plugins/marketplace.json` 提供本地安装。通过 MCP 打开本机便签板；额度通过 Codex App Server `account/rateLimits/read` 读取，只用 300 分钟窗口。Codex 无对应 DeepSeek 顶栏插槽，额度显示在便签板右上角。详情与操作命令见 `codex/README.md`。
+
+本机已实际看到额度从 94% 更新至 92%，保存、编辑、完成和刷新后持久化已通过界面检查。使用既有 CLI 登录，不读取或打包认证文件。分析功能使用只读 CLI 调用，不自动传入当前聊天历史。
+
+初期独立 CLI 请求未沿用 macOS 系统代理，导致分析请求与额度查询不稳定（已修复）。Codex 子进程现自动沿用系统 HTTPS 代理，显式代理环境变量优先。修复后窗口实际分析已返回判断、待澄清问题和下一步；PATH CLI 与桌面 CLI 均实际读到相同的 5 小时剩余额度。7 项自动检查通过，图片压缩、保存、刷新读取与窄屏/桌面布局已验证。
